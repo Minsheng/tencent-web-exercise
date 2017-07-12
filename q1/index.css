@@ -1,0 +1,21 @@
+/* Author: Minsheng Zheng */
+body {
+    background-color: black;
+}
+
+/* dragging object */
+div#square {
+    background-color: white;
+    width: 60px;
+    height: 60px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+div#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: black;
+}

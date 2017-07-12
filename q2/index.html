@@ -1,0 +1,23 @@
+<!-- 页面内有一个input输入框，实现在数组arr查询命中词并和autocomplete效果 -->
+<html>
+<head>
+    <style>
+        div#recommend {
+            width: 20px;
+            height: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <input id="searchResult" onchange="searchQuery()" type="text" placeholder="search...">
+        <!-- Recommendation dropdown, hidden initially, show when there is a match -->
+        <!-- complete input field when select -->
+
+        <!-- insert list item when there is match -->
+        <ul id="recommend">
+        </ul>
+    </div>
+</body>
+<script src="app.js"></script>
+</html>
