@@ -1,3 +1,7 @@
+/**
+ * Author: Minsheng Zheng 郑旻晟
+ */
+
 class Goban {
     constructor(settings) {
         this.settings = settings;
@@ -11,14 +15,20 @@ class Goban {
         this.boardHeight = settings.n * settings.gap;
         this.validWidth = settings.n * settings.gap + settings.padding;
         this.validHeight = settings.n * settings.gap + settings.padding;
+
         this.board = null;
+        this.playHistory = [];
+        this.playNumber = 0;
+        this.lastUnplay = null;
         this.winner = null;
         this.c = null;
+
         this.c = document.getElementById("gameBoard");
         this.c.width = this.boardWidth + settings.padding * 2;
         this.c.height = this.boardHeight + settings.padding * 2;
         this.ctx = this.c.getContext("2d");
         this.player = 1; // white player first by default
+
         this.drawGameBoard();
         this.initBoardData();
         this.initUI();
@@ -75,12 +85,23 @@ class Goban {
     }
 
     /**
-     * Initialize UI elements (reset, unplay, replay)
+     * Initialize UI elements (buttons for reset, unplay, replay)
      */
     initUI() {
         const resetBtn = document.getElementById("reset");
+        const unplayBtn = document.getElementById("unplay");
+        const replayBtn = document.getElementById("replay");
+
         resetBtn.onclick = ev => {
             this.initGame();
+        }
+
+        unplayBtn.onclick = ev => {
+            this.unplay();
+        }
+
+        replayBtn.onclick = ev => {
+            this.replay();
         }
     }
 
@@ -91,19 +112,7 @@ class Goban {
     }
 
     /**
-     * x,y is the coordinate of the intersection of two board lines
-     */
-    drawCircle(ctx, x, y, player) {
-        const settings = this.settings;
-
-        ctx.fillStyle = settings.circleColor[player];
-        ctx.beginPath();
-        ctx.arc(x,y,settings.gap/2-2,0,2*Math.PI);
-        ctx.fill();
-    }
-
-    /**
-     *
+     * Two players take turn to make a move on the board
      * @param ev
      */
     play(ev) {
@@ -113,7 +122,6 @@ class Goban {
         const gap = this.settings.gap;
         const horizontalBound = this.validWidth;
         const verticalBound = this.validHeight;
-        // const outBound = this.settings.outBound;
         const player = this.player;
 
         // convert coordinates to canvas-based
@@ -141,7 +149,106 @@ class Goban {
         console.log([x,y]);
         console.log([xPos, yPos]);
 
+        this.updatePlayHistory(xPos, yPos, player);
+
+        this.lastUnplay = null;
+
         this.switchPlayer();
+    }
+
+    /**
+     * x,y is the coordinate of the intersection of two board lines
+     */
+    drawCircle(ctx, x, y, player) {
+        const settings = this.settings;
+
+        ctx.fillStyle = settings.circleColor[player];
+        ctx.beginPath();
+        ctx.arc(x,y,settings.gap/2-2,0,2*Math.PI);
+        ctx.fill();
+    }
+
+    /**
+     * Replay the last unplay
+     */
+    replay() {
+        // lock board when there is a winner
+        if (this.winner) return;
+
+        const lastPlay = this.lastUnplay;
+
+        if (lastPlay) {
+            // just unplayed, can replay
+            this.board[lastPlay.x][lastPlay.y] = 0;
+
+            this.ctx.putImageData(lastPlay.state, 0, 0);
+
+            // add it back to history
+            this.playHistory.push(lastPlay);
+
+            this.playNumber += 1;
+
+            this.switchPlayer();
+
+            this.lastUnplay = null;
+        }
+    }
+
+    /**
+     * Unplay a move of a player
+     */
+    unplay() {
+        // lock board when there is a winner
+        if (this.winner) return;
+
+        if (this.playNumber === 1) return; // cannot unplay first move
+
+        // get data of current state
+        let currPlayNum = this.playNumber;
+        let currPlayData = this.playHistory[currPlayNum - 1];
+
+        // get data of previous state
+        let prevPlayNum = this.playNumber - 1;
+        let prevPlayData = this.playHistory[prevPlayNum - 1];
+
+        // redraw previous board on canvas
+        this.ctx.putImageData(prevPlayData.state, 0, 0);
+
+        // reset board data of current play
+        this.board[currPlayData.x][currPlayData.y] = 0;
+
+        this.lastUnplay = currPlayData;
+
+        this.playHistory.splice(currPlayNum - 1, 1);
+
+        this.playNumber -= 1;
+
+        if (currPlayData.player !== this.player) {
+            this.switchPlayer(); // just unplayed the other player's move, need to switch turn
+        }
+    }
+
+    /**
+     * Log play data for unplay/replay
+     * @param xPos
+     * @param yPos
+     * @param player
+     */
+    updatePlayHistory(xPos, yPos, player) {
+        this.playNumber += 1;
+
+        let currState = this.ctx.getImageData(0, 0, this.c.width, this.c.height);
+
+        const playData = {
+            id: this.playNumber,
+            x: xPos,
+            y: yPos,
+            player: player,
+            // current state of the board
+            state: currState
+        };
+
+        this.playHistory.push(playData);
     }
 
     isPosPlayed(xPos,yPos) {

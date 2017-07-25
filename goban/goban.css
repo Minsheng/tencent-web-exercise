@@ -11,3 +11,15 @@ body {
 
 canvas {
 }
+
+h1 {
+    text-align: center;
+}
+
+#ui-toolbar {
+    display: -webkit-flex;
+    display:         flex;
+
+    -webkit-justify-content: center;
+    justify-content: center;
+}
