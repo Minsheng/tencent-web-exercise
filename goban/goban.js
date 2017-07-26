@@ -15,11 +15,12 @@ class Goban {
         this.boardHeight = settings.n * settings.gap;
         this.validWidth = settings.n * settings.gap + settings.padding;
         this.validHeight = settings.n * settings.gap + settings.padding;
+        this.maxMove = ((settings.n + 1) * (settings.n + 1)) - 1;
 
         this.board = null;
         this.playHistory = [];
         this.playNumber = 0;
-        this.lastUnplay = null;
+        this.replayQueue = []; // store unplayed move for replay
         this.winner = null;
         this.c = null;
 
@@ -33,6 +34,8 @@ class Goban {
         this.initBoardData();
         this.initUI();
         this.initPlay();
+        // the "0th" move, log the empty board so the first move can be unplayed
+        this.updatePlayHistory(-1, -1, this.player);
     }
 
     /**
@@ -146,12 +149,13 @@ class Goban {
 
         if (this.hasWon(xPos, yPos)) setTimeout(this.end.bind(this), 10);
 
-        console.log([x,y]);
-        console.log([xPos, yPos]);
+        if (this.hasTie()) setTimeout(this.tie.bind(this), 10);
+
+        this.playNumber += 1;
 
         this.updatePlayHistory(xPos, yPos, player);
 
-        this.lastUnplay = null;
+        this.replayQueue = [];
 
         this.switchPlayer();
     }
@@ -169,47 +173,49 @@ class Goban {
     }
 
     /**
-     * Replay the last unplay
+     * Replay the last move being uplayed,
+     * can replay as many times as unplay
      */
     replay() {
         // lock board when there is a winner
         if (this.winner) return;
 
-        const lastPlay = this.lastUnplay;
+        if (this.replayQueue.length === 0) return;
 
-        if (lastPlay) {
+        const lastMove = this.replayQueue.pop(); // get the latest move data
+
+        if (lastMove) {
             // just unplayed, can replay
-            this.board[lastPlay.x][lastPlay.y] = 0;
+            this.board[lastMove.x][lastMove.y] = lastMove.player;
 
-            this.ctx.putImageData(lastPlay.state, 0, 0);
+            this.ctx.putImageData(lastMove.state, 0, 0);
 
             // add it back to history
-            this.playHistory.push(lastPlay);
+            this.playHistory.push(lastMove);
 
             this.playNumber += 1;
 
             this.switchPlayer();
-
-            this.lastUnplay = null;
         }
     }
 
     /**
-     * Unplay a move of a player
+     * Unplay a move of a player,
+     * can unplay continously until the initial state
      */
     unplay() {
         // lock board when there is a winner
         if (this.winner) return;
 
-        if (this.playNumber === 1) return; // cannot unplay first move
+        // cannot unplay at the beginning
+        if ((this.playHistory.length === 1) && (this.playNumber === 0)) return;
 
         // get data of current state
         let currPlayNum = this.playNumber;
-        let currPlayData = this.playHistory[currPlayNum - 1];
+        let currPlayData = this.playHistory[currPlayNum];
 
-        // get data of previous state
         let prevPlayNum = this.playNumber - 1;
-        let prevPlayData = this.playHistory[prevPlayNum - 1];
+        let prevPlayData = this.playHistory[prevPlayNum];
 
         // redraw previous board on canvas
         this.ctx.putImageData(prevPlayData.state, 0, 0);
@@ -217,9 +223,9 @@ class Goban {
         // reset board data of current play
         this.board[currPlayData.x][currPlayData.y] = 0;
 
-        this.lastUnplay = currPlayData;
+        this.replayQueue.push(currPlayData);
 
-        this.playHistory.splice(currPlayNum - 1, 1);
+        this.playHistory.splice(currPlayNum, 1);
 
         this.playNumber -= 1;
 
@@ -235,8 +241,6 @@ class Goban {
      * @param player
      */
     updatePlayHistory(xPos, yPos, player) {
-        this.playNumber += 1;
-
         let currState = this.ctx.getImageData(0, 0, this.c.width, this.c.height);
 
         const playData = {
@@ -261,6 +265,19 @@ class Goban {
 
     end() {
         alert(this.settings.players[this.winner] + " won!");
+    }
+
+    tie() {
+        alert("Impossible! The game is a tie!");
+    }
+
+    hasTie() {
+        if (this.playNumber === this.maxMove) {
+            this.winner = 3;
+            return true;
+        }
+
+        return false;
     }
 
     /**
